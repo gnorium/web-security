@@ -14,7 +14,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-crypto.git", from: "3.0.0"),
-        .package(url: "https://github.com/jwt-kit/jwt-kit.git", from: "5.0.0"),
+        .package(url: "https://github.com/vapor/jwt-kit.git", from: "5.0.0"),
     ],
     targets: [
         .target(

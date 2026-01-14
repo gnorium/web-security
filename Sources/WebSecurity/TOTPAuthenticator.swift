@@ -115,6 +115,43 @@ public struct TOTPAuthenticator: Sendable {
         }
         return data
     }
+
+    // MARK: - Recovery Codes
+
+    /// Generate recovery codes for account recovery.
+    /// - Parameter count: Number of recovery codes to generate (default 8).
+    /// - Returns: Array of recovery codes (e.g., "XXXX-XXXX").
+    public func generateRecoveryCodes(count: Int = 8) -> [String] {
+        let chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789" // Exclude ambiguous chars (0, O, 1, I)
+        var codes: [String] = []
+        for _ in 0..<count {
+            var code = ""
+            var bytes = [UInt8](repeating: 0, count: 8)
+            #if !os(Linux)
+            _ = SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes)
+            #endif
+            for byte in bytes {
+                let index = Int(byte) % chars.count
+                code.append(chars[chars.index(chars.startIndex, offsetBy: index)])
+            }
+            let formatted = String(code.prefix(4)) + "-" + String(code.suffix(4))
+            codes.append(formatted)
+        }
+        return codes
+    }
+
+    /// Hash a recovery code for secure storage.
+    public func hashRecoveryCode(_ code: String) -> String {
+        let normalized = code.replacingOccurrences(of: "-", with: "").uppercased()
+        guard let data = normalized.data(using: .utf8) else { return "" }
+        let hash = SHA256.hash(data: data)
+        return hash.compactMap { String(format: "%02x", $0) }.joined()
+    }
+
+    /// Verify a recovery code against its stored hash.
+    public func verifyRecoveryCode(_ code: String, against hash: String) -> Bool {
+        return hashRecoveryCode(code) == hash
+    }
 }
 
 public enum TOTPError: Error {
