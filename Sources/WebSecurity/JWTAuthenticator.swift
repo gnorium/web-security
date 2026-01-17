@@ -3,27 +3,32 @@ import JWTKit
 
 /// A standard JWT payload for user authentication.
 public struct AuthenticationPayload: JWTPayload, Codable, Sendable {
-    public let subject: SubjectClaim
-    public let expiration: ExpirationClaim
+    public let sub: SubjectClaim
+    public let exp: ExpirationClaim
     public let mfaVerified: Bool
     
     public init(subject: String, mfaVerified: Bool, expiration: Date) {
-        self.subject = SubjectClaim(value: subject)
+        self.sub = SubjectClaim(value: subject)
         self.mfaVerified = mfaVerified
-        self.expiration = ExpirationClaim(value: expiration)
+        self.exp = ExpirationClaim(value: expiration)
     }
 
-    public func verify(using signer: JWTSigner) throws {
-        try self.expiration.verifyNotExpired()
+    public func verify(using signer: some JWTAlgorithm) async throws {
+        try self.exp.verifyNotExpired()
     }
 }
 
 /// Authenticator for signing and verifying JWTs.
 public struct JWTAuthenticator: Sendable {
-    private let signers: JWTSigners
+    private let keys: JWTKeyCollection
 
-    public init(signers: JWTSigners) {
-        self.signers = signers
+    public init(keys: JWTKeyCollection) {
+        self.keys = keys
+    }
+    
+    public init(secret: String) async {
+        self.keys = JWTKeyCollection()
+        await self.keys.add(hmac: HMACKey(stringLiteral: secret), digestAlgorithm: .sha256)
     }
 
     /// Sign a payload for a given subject.
@@ -31,35 +36,25 @@ public struct JWTAuthenticator: Sendable {
         subject: String, 
         mfaVerified: Bool = true, 
         expirationInterval: TimeInterval = 60 * 60 * 24 * 7 // 7 days
-    ) throws -> String {
+    ) async throws -> String {
         let payload = AuthenticationPayload(
             subject: subject,
             mfaVerified: mfaVerified,
             expiration: Date().addingTimeInterval(expirationInterval)
         )
-        return try signers.sign(payload)
+        return try await keys.sign(payload)
+    }
+    
+    public func sign<Payload: JWTPayload>(_ payload: Payload) async throws -> String {
+        try await keys.sign(payload)
     }
 
     /// Verify a token and return the payload.
-    public func verify(_ token: String) throws -> AuthenticationPayload {
-        return try signers.verify(token, as: AuthenticationPayload.self)
+    public func verify(_ token: String) async throws -> AuthenticationPayload {
+        return try await keys.verify(token, as: AuthenticationPayload.self)
     }
-}
-
-// MARK: - Claims
-
-public struct SubjectClaim: Codable, Sendable {
-    public let value: String
-    public init(value: String) { self.value = value }
-}
-
-public struct ExpirationClaim: Codable, Sendable {
-    public let value: Date
-    public init(value: Date) { self.value = value }
     
-    public func verifyNotExpired() throws {
-        if self.value < Date() {
-            throw JWTError.claimVerificationFailure(name: "exp", reason: "Token has expired")
-        }
+    public func verify<Payload: JWTPayload>(_ token: String, as type: Payload.Type) async throws -> Payload {
+        try await keys.verify(token, as: type)
     }
 }
