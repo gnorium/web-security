@@ -6,15 +6,15 @@ public struct AuthenticationPayload: JWTPayload, Codable, Sendable {
     public let sub: SubjectClaim
     public let exp: ExpirationClaim
     public let mfaVerified: Bool
-    
+
     public init(subject: String, mfaVerified: Bool, expiration: Date) {
         self.sub = SubjectClaim(value: subject)
-        self.mfaVerified = mfaVerified
         self.exp = ExpirationClaim(value: expiration)
+        self.mfaVerified = mfaVerified
     }
 
     public func verify(using signer: some JWTAlgorithm) async throws {
-        try self.exp.verifyNotExpired()
+        try exp.verifyNotExpired()
     }
 }
 
