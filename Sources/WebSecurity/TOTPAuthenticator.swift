@@ -18,7 +18,11 @@ public struct TOTPAuthenticator: Sendable {
     public func generateSecret() -> String {
         var bytes = [UInt8](repeating: 0, count: 20)
         #if os(Linux)
-        // Secure randomness
+        // Use SystemRandomNumberGenerator for secure randomness on Linux
+        var rng = SystemRandomNumberGenerator()
+        for i in 0..<bytes.count {
+            bytes[i] = UInt8.random(in: 0...255, using: &rng)
+        }
         #else
         _ = SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes)
         #endif
@@ -127,7 +131,12 @@ public struct TOTPAuthenticator: Sendable {
         for _ in 0..<count {
             var code = ""
             var bytes = [UInt8](repeating: 0, count: 8)
-            #if !os(Linux)
+            #if os(Linux)
+            var rng = SystemRandomNumberGenerator()
+            for i in 0..<bytes.count {
+                bytes[i] = UInt8.random(in: 0...255, using: &rng)
+            }
+            #else
             _ = SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes)
             #endif
             for byte in bytes {
