@@ -1,60 +1,118 @@
 import Foundation
+import Argon2
 import Crypto
+import CryptoExtras
 
-/// Service for salted password hashing using SHA256.
-/// While Bcrypt is preferred, this provides a portable fallback using Swift Crypto.
+/// Pure Swift Argon2id-based password hasher.
+/// Follows the PHC string format standard for future-proof compatibility.
 public struct PasswordHasher: Sendable {
-    private let cost: Int
-
-    public init(cost: Int = 12) {
-        self.cost = cost
-    }
-
-    /// Hash a password using a multi-round SHA256 with salt.
-    public func hash(_ password: String) throws -> String {
-        var salt = [UInt8](repeating: 0, count: 16)
-        #if os(Linux)
-        // Secure randomness for Linux
-        #else
-        _ = SecRandomCopyBytes(kSecRandomDefault, salt.count, &salt)
-        #endif
+    public struct Parameters: Sendable {
+        public let memoryUsage: Int      // KiB (m)
+        public let iterations: Int       // t
+        public let parallelism: Int      // p
         
-        let saltData = Data(salt)
-        let passwordData = Data(password.utf8)
-        let saltedPassword = passwordData + saltData
-
-        var hash = SHA256.hash(data: saltedPassword)
-
-        // Perform multiple rounds for added security (1 << cost)
-        for _ in 0..<(1 << cost) {
-            hash = SHA256.hash(data: Data(hash) + saltData)
-        }
-
-        let hashString = Data(hash).base64EncodedString()
-        let saltString = saltData.base64EncodedString()
-
-        return "\(cost)$\(saltString)$\(hashString)"
+        public static let recommended = Parameters(memoryUsage: 65536, iterations: 3, parallelism: 4)
+        public static let interactive = Parameters(memoryUsage: 32768, iterations: 2, parallelism: 1)
     }
 
-    /// Verify a password against a stored composite hash.
+    private let parameters: Parameters
+
+    public init(parameters: Parameters = .recommended) {
+        self.parameters = parameters
+    }
+
+    /// Hash a password using Argon2id.
+    /// Returns a PHC-formatted string: $argon2id$v=19$m=65536,t=3,p=4$salt$hash
+    public func hash(_ password: String) throws -> String {
+        let salt = [UInt8].random(count: 16)
+        let saltData = Data(salt)
+        
+        let key = try KDF.Argon2id.deriveKey(
+            from: Data(password.utf8),
+            salt: saltData,
+            outputByteCount: 32,
+            iterations: parameters.iterations,
+            memoryByteCount: parameters.memoryUsage * 1024,
+            parallelism: parameters.parallelism
+        )
+        
+        let hash = key.withUnsafeBytes { Data($0) }
+        
+        let saltBase64 = saltData.base64EncodedString().replacingOccurrences(of: "=", with: "")
+        let hashBase64 = hash.base64EncodedString().replacingOccurrences(of: "=", with: "")
+        
+        return "$argon2id$v=19$m=\(parameters.memoryUsage),t=\(parameters.iterations),p=\(parameters.parallelism)$\(saltBase64)$\(hashBase64)"
+    }
+
+    /// Verify a password against a stored PHC-formatted hash.
     public func verify(_ password: String, against storedHash: String) -> Bool {
-        let components = storedHash.split(separator: "$")
-        guard components.count == 3,
-              let cost = Int(components[0]),
-              let saltData = Data(base64Encoded: String(components[1])),
-              let expectedHash = Data(base64Encoded: String(components[2])) else {
+        let parts = storedHash.split(separator: "$")
+        // Format: $argon2id$v=...$m=...,t=...,p=...$salt$hash
+        guard parts.count == 5, parts[0] == "argon2id" else {
             return false
         }
-
-        let passwordData = Data(password.utf8)
-        let saltedPassword = passwordData + saltData
-
-        var hash = SHA256.hash(data: saltedPassword)
-
-        for _ in 0..<(1 << cost) {
-            hash = SHA256.hash(data: Data(hash) + saltData)
+        
+        let paramsPart = parts[2]
+        let paramsSubParts = paramsPart.split(separator: ",")
+        var m: Int?
+        var t: Int?
+        var p: Int?
+        
+        for subPart in paramsSubParts {
+            let kv = subPart.split(separator: "=")
+            if kv.count == 2 {
+                if kv[0] == "m" { m = Int(kv[1]) }
+                else if kv[0] == "t" { t = Int(kv[1]) }
+                else if kv[0] == "p" { p = Int(kv[1]) }
+            }
         }
+        
+        guard let memoryUsage = m, let iterations = t, let parallelism = p else {
+            return false
+        }
+        
+        func decodeBase64(_ base64: String) -> Data? {
+            var s = base64
+            while s.count % 4 != 0 { s += "=" }
+            return Data(base64Encoded: s)
+        }
+        
+        guard let saltData = decodeBase64(String(parts[3])),
+              let expectedHashData = decodeBase64(String(parts[4])) else {
+            return false
+        }
+        
+        do {
+            let key = try KDF.Argon2id.deriveKey(
+                from: Data(password.utf8),
+                salt: saltData,
+                outputByteCount: expectedHashData.count,
+                iterations: iterations,
+                memoryByteCount: memoryUsage * 1024,
+                parallelism: parallelism
+            )
+            
+            let actualHash = key.withUnsafeBytes { Data($0) }
+            return safeCompare(actualHash, expectedHashData)
+        } catch {
+            return false
+        }
+    }
+    
+    private func safeCompare(_ a: Data, _ b: Data) -> Bool {
+        guard a.count == b.count else { return false }
+        var result: UInt8 = 0
+        for (byteA, byteB) in zip(a, b) {
+            result |= byteA ^ byteB
+        }
+        return result == 0
+    }
+}
 
-        return Data(hash) == expectedHash
+extension Array where Element == UInt8 {
+    static func random(count: Int) -> [UInt8] {
+        var bytes = [UInt8](repeating: 0, count: count)
+        _ = SecRandomCopyBytes(kSecRandomDefault, count, &bytes)
+        return bytes
     }
 }
