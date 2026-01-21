@@ -16,16 +16,7 @@ public struct TOTPAuthenticator: Sendable {
 
     /// Generate a random base32-encoded secret for TOTP.
     public func generateSecret() -> String {
-        var bytes = [UInt8](repeating: 0, count: 20)
-        #if os(Linux)
-        // Use SystemRandomNumberGenerator for secure randomness on Linux
-        var rng = SystemRandomNumberGenerator()
-        for i in 0..<bytes.count {
-            bytes[i] = UInt8.random(in: 0...255, using: &rng)
-        }
-        #else
-        _ = SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes)
-        #endif
+        let bytes = [UInt8].random(count: 20)
         return base32Encode(bytes)
     }
 
@@ -130,15 +121,7 @@ public struct TOTPAuthenticator: Sendable {
         var codes: [String] = []
         for _ in 0..<count {
             var code = ""
-            var bytes = [UInt8](repeating: 0, count: 8)
-            #if os(Linux)
-            var rng = SystemRandomNumberGenerator()
-            for i in 0..<bytes.count {
-                bytes[i] = UInt8.random(in: 0...255, using: &rng)
-            }
-            #else
-            _ = SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes)
-            #endif
+            let bytes = [UInt8].random(count: 8)
             for byte in bytes {
                 let index = Int(byte) % chars.count
                 code.append(chars[chars.index(chars.startIndex, offsetBy: index)])

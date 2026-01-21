@@ -108,11 +108,3 @@ public struct PasswordHasher: Sendable {
         return result == 0
     }
 }
-
-extension Array where Element == UInt8 {
-    static func random(count: Int) -> [UInt8] {
-        var bytes = [UInt8](repeating: 0, count: count)
-        _ = SecRandomCopyBytes(kSecRandomDefault, count, &bytes)
-        return bytes
-    }
-}
