@@ -62,7 +62,7 @@ let isValid = totp.verifyCode(userCode, secret: secret)
 import WebSecurity
 
 let jwt = JWTAuthenticator(signers: app.jwt.signers)
-let token = try jwt.sign(subject: userId, mfaVerified: true)
+let token = try jwt.sign(subject: userID, mfaVerified: true)
 let payload = try jwt.verify(token: token)
 ```
 

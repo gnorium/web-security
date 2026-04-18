@@ -10,22 +10,22 @@ public struct OIDCProvider: Sendable {
     }
 
     private let provider: Provider
-    private let clientId: String
+    private let clientID: String
     private let redirectUri: String
-    private let userPoolId: String?
+    private let userPoolID: String?
     private let region: String?
 
     public init(
         provider: Provider, 
-        clientId: String, 
+        clientID: String, 
         redirectUri: String, 
-        userPoolId: String? = nil, 
+        userPoolID: String? = nil, 
         region: String? = nil
     ) {
         self.provider = provider
-        self.clientId = clientId
+        self.clientID = clientID
         self.redirectUri = redirectUri
-        self.userPoolId = userPoolId
+        self.userPoolID = userPoolID
         self.region = region
     }
 
@@ -36,7 +36,7 @@ public struct OIDCProvider: Sendable {
 
         var components = URLComponents(string: endpoint)!
         var queryItems = [
-            URLQueryItem(name: "client_id", value: clientId),
+            URLQueryItem(name: "client_id", value: clientID),
             URLQueryItem(name: "redirect_uri", value: redirectUri),
             URLQueryItem(name: "response_type", value: "code"),
             URLQueryItem(name: "scope", value: scope),
@@ -60,8 +60,8 @@ public struct OIDCProvider: Sendable {
         case .apple:
             return "https://appleid.apple.com/auth/authorize"
         case .cognito:
-            guard let userPoolId = userPoolId, let region = region else { return "" }
-            return "https://\(userPoolId).auth.\(region).amazoncognito.com/oauth2/authorize"
+            guard let userPoolID = userPoolID, let region = region else { return "" }
+            return "https://\(userPoolID).auth.\(region).amazoncognito.com/oauth2/authorize"
         }
     }
 
