@@ -1,32 +1,25 @@
 import Foundation
 
 /// Provider for generating OAuth/OIDC authorization URLs.
-/// Brand-neutral and compatible with Google, Apple, and AWS Cognito.
+/// Brand-neutral and compatible with Google and Apple.
 public struct OIDCProvider: Sendable {
   public enum Provider: String, Sendable {
     case google
     case apple
-    case cognito
   }
 
   private let provider: Provider
   private let clientID: String
   private let redirectUri: String
-  private let userPoolID: String?
-  private let region: String?
 
   public init(
     provider: Provider,
     clientID: String,
-    redirectUri: String,
-    userPoolID: String? = nil,
-    region: String? = nil
+    redirectUri: String
   ) {
     self.provider = provider
     self.clientID = clientID
     self.redirectUri = redirectUri
-    self.userPoolID = userPoolID
-    self.region = region
   }
 
   /// Generate the authorization URL for the provider.
@@ -59,9 +52,6 @@ public struct OIDCProvider: Sendable {
       return "https://accounts.google.com/o/oauth2/v2/auth"
     case .apple:
       return "https://appleid.apple.com/auth/authorize"
-    case .cognito:
-      guard let userPoolID = userPoolID, let region = region else { return "" }
-      return "https://\(userPoolID).auth.\(region).amazoncognito.com/oauth2/authorize"
     }
   }
 
@@ -69,7 +59,6 @@ public struct OIDCProvider: Sendable {
     switch provider {
     case .google: return "openid email profile"
     case .apple: return "openid email name"
-    case .cognito: return "openid email profile"
     }
   }
 }
