@@ -24,7 +24,11 @@ public struct PasswordHasher: Sendable {
   /// Hash a password using Argon2id.
   /// Returns a PHC-formatted string: $argon2id$v=19$m=65536,t=3,p=4$salt$hash
   public func hash(_ password: String) throws -> String {
-    let salt = [UInt8].random(count: 16)
+    try hash(password, salt: [UInt8].random(count: 16))
+  }
+
+  /// Hash with a caller-supplied salt; used by the interop tests to reproduce reference PHC strings.
+  func hash(_ password: String, salt: [UInt8]) throws -> String {
     let saltData = Data(salt)
 
     let key = try KDF.Argon2id.deriveKey(
@@ -49,7 +53,8 @@ public struct PasswordHasher: Sendable {
   public func verify(_ password: String, against storedHash: String) -> Bool {
     let parts = storedHash.split(separator: "$")
     // Format: $argon2id$v=...$m=...,t=...,p=...$salt$hash
-    guard parts.count == 5, parts[0] == "argon2id" else {
+    // Only version 0x13 (19) is implemented by the core.
+    guard parts.count == 5, parts[0] == "argon2id", parts[1] == "v=19" else {
       return false
     }
 

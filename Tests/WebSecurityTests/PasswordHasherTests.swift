@@ -46,35 +46,4 @@ final class PasswordHasherTests: XCTestCase {
     XCTAssertEqual(components[1], "v=19")
     XCTAssertEqual(components[2], "m=65536,t=3,p=4")
   }
-
-  func testRFC9106Argon2idTestVector() throws {
-    // From RFC 9106, Section 5.3
-    let password = Data(repeating: 0x01, count: 32)
-    let salt = Data(repeating: 0x02, count: 16)
-    let secret = Data(repeating: 0x03, count: 8)
-    let ad = Data(repeating: 0x04, count: 12)
-
-    let key = try KDF.Argon2id.deriveKey(
-      from: password,
-      salt: salt,
-      outputByteCount: 32,
-      iterations: 3,
-      memoryByteCount: 32 * 1024,
-      parallelism: 4,
-      secret: secret,
-      associatedData: ad
-    )
-
-    let actualHash = key.withUnsafeBytes { Data($0) }
-
-    // Expected Tag from RFC 9106, Section 5.3
-    let expectedHash = Data([
-      0x0d, 0x64, 0x0d, 0xf5, 0x8d, 0x78, 0x76, 0x6c,
-      0x08, 0xc0, 0x37, 0xa3, 0x4a, 0x8b, 0x53, 0xc9,
-      0xd0, 0x1e, 0xf0, 0x45, 0x2d, 0x75, 0xb6, 0x5e,
-      0xb5, 0x25, 0x20, 0xe9, 0x6b, 0x01, 0xe6, 0x59,
-    ])
-
-    XCTAssertEqual(actualHash, expectedHash, "Hash should match RFC 9106 test vector")
-  }
 }

@@ -187,7 +187,7 @@ internal enum Argon2NativeImplementation {
     var j1: UInt32 = 0
     var j2: UInt32 = 0
     if generator != nil {
-      (j1, j2) = generator!.nextPair()
+      (j1, j2) = generator!.pair(at: col)
     } else {
       let j = slice * sliceLen + col
       let prevCol = (j - 1 + q) % q
@@ -209,30 +209,38 @@ internal enum Argon2NativeImplementation {
     return (l, absZ)
   }
 
+  /// Data-independent address generator for one segment (pass, lane, slice).
+  ///
+  /// Address block k (k = 1, 2, ...) is G(0, G(0, input)) with the counter set to k, and the
+  /// pseudo-random pair for segment column `col` is word `col % 128` of block `col / 128 + 1`.
+  /// Columns are addressed by position, not consumed in order: in the first segment of the first
+  /// pass columns 0 and 1 are not computed, yet their words are skipped (RFC 9106, section 3.4.2;
+  /// libargon2 `fill_segment`).
   private struct IndexGenerator {
-    var blocks: [UInt64]
-    var index: Int
+    var input: Block
+    var addresses: Block
+    var counter: UInt64
     init(pass: Int, lane: Int, slice: Int, m_prime: Int, iterations: Int, variant: Variant) {
-      var input = Block()
+      input = Block()
       input.v[0] = UInt64(pass)
       input.v[1] = UInt64(lane)
       input.v[2] = UInt64(slice)
       input.v[3] = UInt64(m_prime)
       input.v[4] = UInt64(iterations)
       input.v[5] = UInt64(variant.rawValue)
-      self.blocks = []
-      self.index = 0
-      let zero = Block()
-      for i in 1...100 {
-        input.v[6] = UInt64(i)
-        self.blocks.append(contentsOf: g(x: zero, y: g(x: zero, y: input)).v)
-      }
+      addresses = Block()
+      counter = 0
     }
-    mutating func nextPair() -> (UInt32, UInt32) {
-      let j1 = UInt32(blocks[index] & 0xFFFF_FFFF)
-      let j2 = UInt32(blocks[index] >> 32)
-      index += 1
-      return (j1, j2)
+    mutating func pair(at col: Int) -> (UInt32, UInt32) {
+      let needed = UInt64(col / 128 + 1)
+      if counter != needed {
+        counter = needed
+        input.v[6] = needed
+        let zero = Block()
+        addresses = g(x: zero, y: g(x: zero, y: input))
+      }
+      let word = addresses.v[col % 128]
+      return (UInt32(word & 0xFFFF_FFFF), UInt32(word >> 32))
     }
   }
 
