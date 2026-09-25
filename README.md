@@ -11,7 +11,7 @@ WebSecurity provides reusable, framework-agnostic security components for authen
 - **JWTAuthenticator**: JWT token signing and verification with configurable claims
 - **TOTPAuthenticator**: Time-based One-Time Password (RFC 6238) generation and verification
 - **PasswordHasher**: Salted password hashing with configurable rounds
-- **DataEncryptor**: AES-GCM encryption/decryption for sensitive data
+- **DataEncryptor**: AES-256-GCM authenticated encryption bound to a context (column and row, or cookie), HMAC-SHA256 keyed hashing, and HKDF per-purpose keys
 - **OIDCProvider**: OAuth/OIDC authorization URL generation for various providers
 
 ## Installation
