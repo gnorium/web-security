@@ -35,6 +35,6 @@ final class Argon2BenchmarkTests: XCTestCase {
         "81db97a7e67a891784a2599bc879f957cb3512d273984bd97d8a18fc59ff01e2")
     }
     let formatted = seconds.map { String(format: "%.3f", $0) }.joined(separator: ", ")
-    print("ARGON2_BENCH m=65536 t=3 p=4 runs(s): [\(formatted)] min=\(seconds.min()!)")
+    print("Argon2id benchmark m=65536 t=3 p=4 runs(s): [\(formatted)] min=\(seconds.min()!)")
   }
 }
