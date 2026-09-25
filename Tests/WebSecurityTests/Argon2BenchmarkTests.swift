@@ -7,16 +7,16 @@ import XCTest
 
 /// Wall-clock timing of Argon2id at the server parameters (m=65536 KiB, t=3, p=4).
 ///
-/// Skipped unless `ARGON2_BENCH=1`, so the regular suite stays fast. Run it in both
+/// Skipped unless `ARGON2_BENCHMARK=1`, so the regular suite stays fast. Run it in both
 /// configurations:
 ///
-///     ARGON2_BENCH=1 swift test --filter Argon2BenchmarkTests
-///     ARGON2_BENCH=1 swift test -c release -Xswiftc -enable-testing --filter Argon2BenchmarkTests
+///     ARGON2_BENCHMARK=1 swift test --filter Argon2BenchmarkTests
+///     ARGON2_BENCHMARK=1 swift test -c release -Xswiftc -enable-testing --filter Argon2BenchmarkTests
 final class Argon2BenchmarkTests: XCTestCase {
   func testServerParametersTiming() throws {
     try XCTSkipUnless(
-      ProcessInfo.processInfo.environment["ARGON2_BENCH"] == "1", "set ARGON2_BENCH=1 to run")
-    let runs = Int(ProcessInfo.processInfo.environment["ARGON2_BENCH_RUNS"] ?? "") ?? 5
+      ProcessInfo.processInfo.environment["ARGON2_BENCHMARK"] == "1", "set ARGON2_BENCHMARK=1 to run")
+    let runs = Int(ProcessInfo.processInfo.environment["ARGON2_BENCHMARK_RUNS"] ?? "") ?? 5
     var seconds: [Double] = []
     for _ in 0..<runs {
       let start = ContinuousClock.now
