@@ -18,7 +18,7 @@ internal enum Argon2NativeImplementation {
   /// raw pointers with no per-block allocations, so the only heap traffic is the matrix itself and
   /// one scratch area per segment. When `parallelism > 1` the lanes of each slice are filled
   /// concurrently: a lane writes only its own segment and reads other lanes only outside the
-  /// current slice, and slices are synchronisation points (RFC 9106, section 3.4).
+  /// current slice, and slices are synchronization points (RFC 9106, section 3.4).
   static func hash<P: DataProtocol, S: DataProtocol>(
     password: P, salt: S, iterations: Int, memoryBytes: Int, parallelism: Int, outputLength: Int,
     variant: Variant, secret: Data? = nil, associatedData: Data? = nil
