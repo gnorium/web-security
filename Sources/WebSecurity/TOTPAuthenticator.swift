@@ -114,7 +114,9 @@ public struct TOTPAuthenticator: Sendable {
 
   // MARK: - Recovery Codes
 
-  /// Generate recovery codes for account recovery.
+  /// Generate recovery codes for account recovery. They are stored only as
+  /// keyed hashes, by the server (never a plain hash: 40 bits are few enough
+  /// to try them all).
   /// - Parameter count: Number of recovery codes to generate (default 8).
   /// - Returns: Array of recovery codes (e.g., "XXXX-XXXX").
   public func generateRecoveryCodes(count: Int = 8) -> [String] {
@@ -131,19 +133,6 @@ public struct TOTPAuthenticator: Sendable {
       codes.append(formatted)
     }
     return codes
-  }
-
-  /// Hash a recovery code for secure storage.
-  public func hashRecoveryCode(_ code: String) -> String {
-    let normalized = code.replacingOccurrences(of: "-", with: "").uppercased()
-    guard let data = normalized.data(using: .utf8) else { return "" }
-    let hash = SHA256.hash(data: data)
-    return hash.compactMap { String(format: "%02x", $0) }.joined()
-  }
-
-  /// Verify a recovery code against its stored hash.
-  public func verifyRecoveryCode(_ code: String, against hash: String) -> Bool {
-    return hashRecoveryCode(code) == hash
   }
 }
 
